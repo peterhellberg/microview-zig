@@ -6,8 +6,13 @@ pub const Port = enum(u2) { a, b, c, d };
 
 // Data-space addresses: PINx, DDRx, PORTx are 3 apart, starting at 0x20.
 fn regs(comptime port: Port) [3]u8 {
-    const pin: u8 = 0x20 + 3 * @as(u8, @intFromEnum(port));
-    return .{ pin, pin + 1, pin + 2 };
+    const pin: u8 = 0x20 + 3 * @as(u8, @backingInt(port));
+
+    return .{
+        pin,
+        pin + 1,
+        pin + 2,
+    };
 }
 
 comptime {
@@ -15,12 +20,14 @@ comptime {
     // two ports this board uses against the datasheet.
     const b = regs(.b);
     if (b[0] != 0x23 or b[1] != 0x24 or b[2] != 0x25) @compileError("port B registers");
+
     const d = regs(.d);
     if (d[0] != 0x29 or d[1] != 0x2A or d[2] != 0x2B) @compileError("port D registers");
 }
 
 pub fn Pin(comptime port: Port, comptime bit: u3) type {
     const r = regs(port);
+
     return struct {
         const pin_reg: *volatile u8 = @ptrFromInt(r[0]);
         const ddr_reg: *volatile u8 = @ptrFromInt(r[1]);
@@ -35,6 +42,7 @@ pub fn Pin(comptime port: Port, comptime bit: u3) type {
             } else {
                 port_reg.* &= ~mask;
             }
+
             ddr_reg.* |= mask;
         }
 

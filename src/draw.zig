@@ -178,6 +178,31 @@ test "disc is round, filled and symmetric" {
     }
 }
 
+test "line covers both endpoints and every column between" {
+    const std = @import("std");
+
+    clear();
+    line(10, 10, 20, 10);
+
+    for (10..21) |x| try std.testing.expect(set(@intCast(x), 10));
+
+    try std.testing.expect(!set(9, 10));
+    try std.testing.expect(!set(21, 10));
+}
+
+test "stroke is a thick line with round caps" {
+    const std = @import("std");
+
+    clear();
+    stroke(10, 20, 30, 20, 2);
+
+    try std.testing.expect(set(20, 20)); // centre line
+    try std.testing.expect(set(20, 22)); // radius 2 thick
+    try std.testing.expect(!set(20, 24)); // and no further
+    try std.testing.expect(set(11, 20)); // cap at the start point
+    try std.testing.expect(!set(30, 24)); // caps are round, not square
+}
+
 fn set(x: i16, y: i16) bool {
     const col: u16 = @intCast(x);
     const row: u16 = @intCast(y);

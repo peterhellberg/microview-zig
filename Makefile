@@ -62,7 +62,11 @@ test: $(SRC)
 upload: $(OUT)/main.hex
 	avrdude $(AVRDUDE_FLAGS) -U flash:w:$<:i -D
 
+# Host-only: render one frame of each animation to docs/*.png for the README.
+screenshots: $(SRC)
+	$(ZIG) run src/screenshots.zig
+
 clean:
 	rm -rf $(OUT)
 
-.PHONY: all test upload clean
+.PHONY: all test screenshots upload clean

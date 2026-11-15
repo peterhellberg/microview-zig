@@ -49,6 +49,7 @@ src/
 ├── buttons.zig      the two buttons on D2/D3
 ├── trig.zig         8.8 fixed-point sin/cos
 ├── main.zig         frame loop and the one-line animation switch
+├── runtime.zig      provides the AVR startup code 
 ├── screenshots.zig  host-only: renders docs/*.png, never runs on the AVR
 └── anims/
     ├── trails.zig   gravity, steering, wall bounce, fading wake

@@ -6,7 +6,16 @@ today: a disc falling under gravity and dragging a fading trail, a star of eight
 rays that pulses and turns, and a shaded cube that tumbles in dither. The
 buttons steer, or change the pace, depending on the animation.
 
-Eight modules, each with one job:
+| trails | spokes | cube |
+|:---:|:---:|:---:|
+| ![trails](docs/trails.png) | ![spokes](docs/spokes.png) | ![cube](docs/cube.png) |
+| gravity and a fading wake | eight pulsing rays | a dither-shaded cube |
+
+Each image is one frame at 4x, rendered on the host by `make screenshots`
+(`src/screenshots.zig`), which drives the real `init`/`update`/`render` code and
+writes `draw.buf` out as a PNG.
+
+Nine files, each with one job:
 
 | File | Job |
 |------|-----|
@@ -18,6 +27,7 @@ Eight modules, each with one job:
 | `src/anims/trails.zig` | animation: gravity, steering, wall bounce, trail, plus host tests |
 | `src/anims/spokes.zig` | animation: eight pulsing rays, thick axes from `stroke`, thin diagonals from `line`, plus a host test |
 | `src/anims/cube.zig` | animation: spinning cube, weak perspective, faces scan-filled with 16-level ordered dither, plus four host tests |
+| `src/screenshots.zig` | host-only: runs each animation for a fixed number of frames and writes the PNGs above |
 
 `draw.zig` is hardware-free, the hardware modules know nothing about the
 animation, and `main.zig` touches no registers and does not know what the
@@ -81,12 +91,15 @@ An animation is any module with four public items, all called by
 
 So copy `src/anims/trails.zig`, change the body, and point the `animation` import
 at the top of `src/main.zig` at the new file. That is the only switch: an
-animation never touches SPI, pins or the panel, it only calls `draw.*`.
+animation never touches SPI, pins or the panel, it only calls `draw.*`. Add it
+to the `shots` table in `src/screenshots.zig` as well if it should appear in the
+gallery, then rerun `make screenshots`.
 
 ## Build
 
     make            # build/main.hex, then the host tests
     make test       # every module with a `test` block, in one run
+    make screenshots # regenerate docs/*.png from the animations
     make upload     # flash it (PORT=/dev/ttyUSB0 by default)
     make clean
 

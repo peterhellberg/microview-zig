@@ -1,21 +1,27 @@
 # Zig MicroView demo
 
 Animations for the MicroView's 64x48 SSD1306, written straight to the AVR - no
-Arduino code involved - plus the small driver that shows one of them. Three ship
+Arduino code involved - plus the small driver that shows one of them. Four ship
 today: a disc falling under gravity and dragging a fading trail, a star of eight
-rays that pulses and turns, and a shaded cube that tumbles in dither. The
-buttons steer, or change the pace, depending on the animation.
+rays that pulses and turns, a shaded cube that tumbles in dither, and a radar
+whose sweep leaves fading echoes. The buttons steer, or change the pace,
+depending on the animation.
 
-| trails | spokes | cube |
-|:---:|:---:|:---:|
-| ![trails](docs/trails.png) | ![spokes](docs/spokes.png) | ![cube](docs/cube.png) |
-| gravity and a fading wake | eight pulsing rays | a dither-shaded cube |
+| trails | spokes |
+|:---:|:---:|
+| ![trails](docs/trails.png) | ![spokes](docs/spokes.png) |
+| gravity and a fading wake | eight pulsing rays |
+
+| cube | radar |
+|:---:|:---:|
+| ![cube](docs/cube.png) | ![radar](docs/radar.png) |
+| a dither-shaded cube | a sweep with fading echoes |
 
 Each image is one frame at 4x, rendered on the host by `make screenshots`
 (`src/screenshots.zig`), which drives the real `init`/`update`/`render` code and
 writes `draw.buf` out as a PNG.
 
-Nine files, each with one job:
+Eleven files, each with one job:
 
 | File | Job |
 |------|-----|
@@ -26,14 +32,17 @@ Nine files, each with one job:
 | `src/main.zig` | driver: frame loop and the one-line animation switch (`src/anims/` holds the animations) |
 | `src/anims/trails.zig` | animation: gravity, steering, wall bounce, trail, plus host tests |
 | `src/anims/spokes.zig` | animation: eight pulsing rays, thick axes from `stroke`, thin diagonals from `line`, plus a host test |
-| `src/anims/cube.zig` | animation: spinning cube, weak perspective, faces scan-filled with 16-level ordered dither, plus four host tests |
+| `src/anims/cube.zig` | animation: spinning cube, weak perspective, faces scan-filled with 16-level ordered dither, plus three host tests |
+| `src/anims/radar.zig` | animation: turning sweep, ten LFSR-placed contacts that flare and fade, plus three host tests |
+| `src/trig.zig` | shared 8.8 `sin`/`cos`, a parabola over a 256-step turn, plus a host test |
 | `src/screenshots.zig` | host-only: runs each animation for a fixed number of frames and writes the PNGs above |
 
 `draw.zig` is hardware-free, the hardware modules know nothing about the
 animation, and `main.zig` touches no registers and does not know what the
 animation draws. Only the animation named at the top of `main.zig` is compiled
 in, so picking one also picks its footprint: spokes is 2.0 KiB of flash and
-386 bytes of RAM, trails 2.5 KiB and 480 bytes, cube 3.3 KiB and 384 bytes.
+386 bytes of RAM, trails 2.5 KiB and 480 bytes, cube 3.3 KiB and 384 bytes,
+radar 2.2 KiB and 445 bytes.
 
 Pins are comptime types, so they cost no RAM and each operation folds into one
 instruction:
@@ -63,19 +72,28 @@ Physics in `anims/trails.zig` runs in 8.8 fixed point - positions and velocities
 `i32` holding 256 sub-pixels per pixel - with a speed cap, four substeps per
 tick, and walls that clamp the position and reflect the velocity. The trail is
 the last few positions redrawn as circles of shrinking radius: a monochrome
-stand-in for a fade, since the panel has no gray levels. In the other two
-animations the same buttons reverse and speed up the spin.
+stand-in for a fade, since the panel has no gray levels. In the other three
+animations the same buttons reverse the motion or speed it up.
 
-`anims/cube.zig` has no trig tables and no floats. `sin` is a parabola over a
-256-step turn, the yaw and pitch are stored as absolute angles rather than an
-accumulated matrix (so rounding cannot make the cube drift), and the projection
-is 8.8 fixed point scaled down vertically for the 64x48 panel. Back faces are
-culled by the sign of their rotated normal; the three that remain are filled by
-scanline at a 16-level density chosen from how squarely each face meets the
-light. The 4x4 Bayer matrix is computed from the pixel's low bits rather than
+`anims/cube.zig` has no trig tables and no floats: `sin` comes from
+`src/trig.zig`, a parabola over a 256-step turn shared with the radar. Yaw and
+pitch are absolute angles rather than an accumulated matrix (so rounding cannot
+make the cube drift), and the projection is 8.8 fixed point scaled down
+vertically for the 64x48 panel. Back faces are culled by the sign of their
+rotated normal; the three that remain are filled by scanline at a 16-level
+density chosen from how squarely each face meets the light. The 4x4 Bayer matrix is computed from the pixel's low bits rather than
 stored (a table would live in flash and cost an `lpm`), so a face brightens one
 pixel in sixteen at a time instead of flipping between four patterns - which
 used to look like a blink. Faces are outlined with `line`.
+
+`anims/radar.zig` seeds ten contacts from an LFSR (random, but identical every
+boot - a fixed table would cost an `lpm`), one per sector so they cannot hide
+each other. The sweep is a `u8` angle, and each frame tests whether the arc it
+turns through crossed a contact, which handles the 255 -> 0 wrap in either
+direction. A hit sets that contact's fade counter to 120; every frame the
+counter drops, and the blip shrinks from a five-pixel cross to a line to a
+single pixel. That is a monochrome fade with no gray levels, and echoes last
+just under one revolution. The two buttons reverse the sweep or speed it up.
 
 ## Writing another animation
 

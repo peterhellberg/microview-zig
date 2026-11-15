@@ -174,10 +174,8 @@ in `src/` because Zig keeps imports inside the test root's directory:
 `zig test src/anims/trails.zig` alone cannot reach `../draw.zig`.
 
 <details>
-<summary>Zig 0.17 on AVR: the three sharp edges</summary>
+<summary>Zig 0.17 on AVR: the two sharp edges</summary>
 
-- Zig builds the object; avr-gcc links it, because Zig's own AVR link places
-  `.text` at 0x11000. The link adds crt0 and the vector table.
 - `-fno-compiler-rt` is required: compiler_rt does not build for AVR.
 - Integer initializers on globals do not always survive into `.data`, so each
   animation's `init()` sets its start state explicitly.

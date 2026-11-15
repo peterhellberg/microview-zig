@@ -55,17 +55,21 @@ fn stepPhysics(gx: i32, gy: i32) void {
 
     if (px < EDGE) {
         x = EDGE << SUBPIXEL;
+
         if (vx < 0) vx = -vx;
     } else if (px > draw.WIDTH - EDGE) {
         x = (draw.WIDTH - EDGE) << SUBPIXEL;
+
         if (vx > 0) vx = -vx;
     }
 
     if (py < EDGE) {
         y = EDGE << SUBPIXEL;
+
         if (vy < 0) vy = -vy;
     } else if (py > draw.HEIGHT - EDGE) {
         y = (draw.HEIGHT - EDGE) << SUBPIXEL;
+
         if (vy > 0) vy = -vy;
     }
 }
@@ -73,6 +77,7 @@ fn stepPhysics(gx: i32, gy: i32) void {
 fn pushTrail(px: i16, py: i16) void {
     trail_x[trail_head] = px;
     trail_y[trail_head] = py;
+
     trail_head = (trail_head + 1) % TRAIL;
 }
 
@@ -80,6 +85,7 @@ fn pushTrail(px: i16, py: i16) void {
 // "fade" by geometric shrinking instead of gray levels.
 fn drawTrail() void {
     var i: usize = 1;
+
     while (i < TRAIL) : (i += 1) {
         const idx = (trail_head + TRAIL - i) % TRAIL;
         const r: i16 = @intCast((TRAIL - i) * RADIUS / TRAIL);
@@ -114,6 +120,7 @@ export fn main() callconv(.c) noreturn {
             const gy: i32 = GRAVITY;
 
             var s: usize = 0;
+
             while (s < SUBSTEPS) : (s += 1) {
                 stepPhysics(gx, gy);
             }
@@ -167,21 +174,23 @@ test "walls reflect velocity and clamp position" {
     try std.testing.expectEqual(@as(i32, (draw.HEIGHT - EDGE) << SUBPIXEL), y);
     try std.testing.expect(vy < 0); // now climbing
 
-    // Ceiling: same treatment.
+    // Ceiling: same treatment. vy must outrun one gravity step, otherwise it
+    // reaches zero at the wall instead of reflecting.
     x = 32 << SUBPIXEL;
-    y = (EDGE << SUBPIXEL) - (1 << 4);
-    vy = -(1 << 4);
+    y = (EDGE << SUBPIXEL) - (3 << SUBPIXEL);
+    vy = -(3 << SUBPIXEL);
 
     stepPhysics(0, GRAVITY);
 
     try std.testing.expectEqual(@as(i32, EDGE << SUBPIXEL), y);
     try std.testing.expect(vy > 0); // now falling
 
-    // Mid-panel motion is untouched.
+    // Mid-panel motion is untouched. vy also has to outrun one gravity step
+    // for the disc to actually climb.
     x = 32 << SUBPIXEL;
     y = 20 << SUBPIXEL;
     vx = 2 << SUBPIXEL;
-    vy = -(1 << 4);
+    vy = -(4 << SUBPIXEL);
 
     stepPhysics(0, GRAVITY);
 

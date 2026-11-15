@@ -1,12 +1,12 @@
 # Zig MicroView demo
 
 Animations for the MicroView's 64x48 SSD1306, written straight to the AVR - no
-Arduino code involved - plus the small driver that shows one of them. Two ship
-today: a disc falling under gravity and dragging a fading trail, and a star of
-eight rays that pulses and turns. The buttons steer, or change the pace,
-depending on the animation.
+Arduino code involved - plus the small driver that shows one of them. Three ship
+today: a disc falling under gravity and dragging a fading trail, a star of eight
+rays that pulses and turns, and a shaded cube that tumbles in dither. The
+buttons steer, or change the pace, depending on the animation.
 
-Seven modules, each with one job:
+Eight modules, each with one job:
 
 | File | Job |
 |------|-----|
@@ -17,12 +17,13 @@ Seven modules, each with one job:
 | `src/main.zig` | driver: frame loop and the one-line animation switch (`src/anims/` holds the animations) |
 | `src/anims/trails.zig` | animation: gravity, steering, wall bounce, trail, plus host tests |
 | `src/anims/spokes.zig` | animation: eight pulsing rays, thick axes from `stroke`, thin diagonals from `line`, plus a host test |
+| `src/anims/cube.zig` | animation: spinning cube, weak perspective, faces scan-filled with 16-level ordered dither, plus four host tests |
 
 `draw.zig` is hardware-free, the hardware modules know nothing about the
 animation, and `main.zig` touches no registers and does not know what the
 animation draws. Only the animation named at the top of `main.zig` is compiled
 in, so picking one also picks its footprint: spokes is 2.0 KiB of flash and
-386 bytes of RAM, trails 2.5 KiB and 480 bytes.
+386 bytes of RAM, trails 2.5 KiB and 480 bytes, cube 3.3 KiB and 384 bytes.
 
 Pins are comptime types, so they cost no RAM and each operation folds into one
 instruction:
@@ -52,7 +53,19 @@ Physics in `anims/trails.zig` runs in 8.8 fixed point - positions and velocities
 `i32` holding 256 sub-pixels per pixel - with a speed cap, four substeps per
 tick, and walls that clamp the position and reflect the velocity. The trail is
 the last few positions redrawn as circles of shrinking radius: a monochrome
-stand-in for a fade, since the panel has no gray levels.
+stand-in for a fade, since the panel has no gray levels. In the other two
+animations the same buttons reverse and speed up the spin.
+
+`anims/cube.zig` has no trig tables and no floats. `sin` is a parabola over a
+256-step turn, the yaw and pitch are stored as absolute angles rather than an
+accumulated matrix (so rounding cannot make the cube drift), and the projection
+is 8.8 fixed point scaled down vertically for the 64x48 panel. Back faces are
+culled by the sign of their rotated normal; the three that remain are filled by
+scanline at a 16-level density chosen from how squarely each face meets the
+light. The 4x4 Bayer matrix is computed from the pixel's low bits rather than
+stored (a table would live in flash and cost an `lpm`), so a face brightens one
+pixel in sixteen at a time instead of flipping between four patterns - which
+used to look like a blink. Faces are outlined with `line`.
 
 ## Writing another animation
 

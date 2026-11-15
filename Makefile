@@ -1,5 +1,6 @@
 # Build and flash the Zig MicroView demo. Zig compiles and links it all;
-# avr.ld says where flash and RAM are, src/start.zig is the reset vector.
+# avr.ld says where flash and RAM are, src/runtime.zig is the reset vector
+# and the compiler-rt/libgcc helpers.
 
 MCU := atmega328p
 

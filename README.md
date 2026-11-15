@@ -1,10 +1,12 @@
 # Zig MicroView demo
 
-A disc falls under gravity, bounces off the panel edges and drags a fading
-trail behind it, on the MicroView's 64x48 SSD1306. No Arduino code involved,
-and the two buttons tilt gravity left and right.
+Animations for the MicroView's 64x48 SSD1306, written straight to the AVR - no
+Arduino code involved - plus the small driver that shows one of them. Two ship
+today: a disc falling under gravity and dragging a fading trail, and a star of
+eight rays that pulses and turns. The buttons steer, or change the pace,
+depending on the animation.
 
-Six modules, each with one job:
+Seven modules, each with one job:
 
 | File | Job |
 |------|-----|
@@ -13,12 +15,14 @@ Six modules, each with one job:
 | `src/microview.zig` | SPI, SSD1306 init sequence, `display`, `delay` |
 | `src/buttons.zig` | the two buttons on PD2/PD3, `init` and `read` |
 | `src/main.zig` | driver: frame loop and the one-line animation switch (`src/anims/` holds the animations) |
-| `src/anims/trails.zig` | the animation: gravity, steering, wall bounce, trail, plus host tests |
+| `src/anims/trails.zig` | animation: gravity, steering, wall bounce, trail, plus host tests |
+| `src/anims/spokes.zig` | animation: eight pulsing rays, thick axes from `stroke`, thin diagonals from `line`, plus a host test |
 
 `draw.zig` is hardware-free, the hardware modules know nothing about the
 animation, and `main.zig` touches no registers and does not know what the
-animation draws. `line` and `stroke` are there for the next animation; this demo
-only uses `disc` and `ring`.
+animation draws. Only the animation named at the top of `main.zig` is compiled
+in, so picking one also picks its footprint: spokes is 2.0 KiB of flash and
+386 bytes of RAM, trails 2.5 KiB and 480 bytes.
 
 Pins are comptime types, so they cost no RAM and each operation folds into one
 instruction:

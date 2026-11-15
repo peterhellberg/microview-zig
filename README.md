@@ -1,6 +1,8 @@
 # Zig MicroView demo
 
-A bouncing disc on the MicroView's 64x48 SSD1306, no Arduino code involved.
+A bouncing disc on the MicroView's 64x48 SSD1306, 
+no Arduino code involved.
+
 Four modules, each with one job:
 
 | File | Job |
@@ -39,9 +41,10 @@ avr-gcc does the link, adding crt0 and the vector table). Output is
 `make upload` runs `avrdude -c arduino -p m328p -P $(PORT) -b 115200`. Override
 with `make PORT=/dev/ttyUSB1 upload`, or `make AVRDUDE_FLAGS=...`.
 
-The original firmware that was on the board is backed up outside this repo
-(32 KiB flash + EEPROM readback); restoring it is the same avrdude command with
-that `.hex` file.
+> [!Note]
+> The original firmware that was on the board is backed up outside this repo
+> (32 KiB flash + EEPROM readback); restoring it is the same avrdude command with
+> that `.hex` file.
 
 Zig 0.17 needs three things to build for this chip: compiler_rt does not
 compile for AVR (`-fno-compiler-rt`), Zig's own AVR link puts `.text` at

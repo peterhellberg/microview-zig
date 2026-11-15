@@ -13,7 +13,8 @@
 
 const buttons = @import("buttons.zig");
 const microview = @import("microview.zig");
-const animation = @import("anims/radar.zig");
+const runtime = @import("runtime.zig");
+const animation = @import("anims/cube.zig");
 
 export fn main() callconv(.c) noreturn {
     buttons.init();
@@ -27,4 +28,8 @@ export fn main() callconv(.c) noreturn {
         microview.display();
         microview.delay(animation.FRAME_MS);
     }
+}
+
+comptime {
+    _ = runtime;
 }

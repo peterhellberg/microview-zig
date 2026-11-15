@@ -4,7 +4,7 @@ A disc falls under gravity, bounces off the panel edges and drags a fading
 trail behind it, on the MicroView's 64x48 SSD1306. No Arduino code involved,
 and the two buttons tilt gravity left and right.
 
-Five modules, each with one job:
+Six modules, each with one job:
 
 | File | Job |
 |------|-----|
@@ -12,11 +12,13 @@ Five modules, each with one job:
 | `src/gpio.zig` | comptime pins: `Pin(.b, 2)`, `drive`, `pullUp`, `read` |
 | `src/microview.zig` | SPI, SSD1306 init sequence, `display`, `delay` |
 | `src/buttons.zig` | the two buttons on PD2/PD3, `init` and `read` |
-| `src/main.zig` | gravity, steering, wall bounce, trail, plus host tests |
+| `src/main.zig` | driver: frame loop and the one-line animation switch (`src/anims/` holds the animations) |
+| `src/anims/trails.zig` | the animation: gravity, steering, wall bounce, trail, plus host tests |
 
 `draw.zig` is hardware-free, the hardware modules know nothing about the
-animation, and `main.zig` touches no registers. `line` and `stroke` are there
-for the next animation; this demo only uses `disc` and `ring`.
+animation, and `main.zig` touches no registers and does not know what the
+animation draws. `line` and `stroke` are there for the next animation; this demo
+only uses `disc` and `ring`.
 
 Pins are comptime types, so they cost no RAM and each operation folds into one
 instruction:
@@ -42,22 +44,42 @@ left pulls the disc left, right pulls it right, and holding both cancels out.
 That is the steering from the article's `MicroViewBounce` sketch, softened into
 an acceleration instead of a velocity override.
 
-Physics runs in 8.8 fixed point - positions and velocities are `i32` holding
-256 sub-pixels per pixel - with a speed cap, four substeps per tick, and walls
-that clamp the position and reflect the velocity. The trail is the last few
-positions redrawn as circles of shrinking radius: a monochrome stand-in for a
-fade, since the panel has no gray levels.
+Physics in `anims/trails.zig` runs in 8.8 fixed point - positions and velocities are
+`i32` holding 256 sub-pixels per pixel - with a speed cap, four substeps per
+tick, and walls that clamp the position and reflect the velocity. The trail is
+the last few positions redrawn as circles of shrinking radius: a monochrome
+stand-in for a fade, since the panel has no gray levels.
+
+## Writing another animation
+
+An animation is any module with four public items, all called by
+`src/main.zig`:
+
+| Item | Job |
+|------|-----|
+| `pub const FRAME_MS: u16` | how long the driver waits between frames |
+| `pub fn init() void` | set the start state |
+| `pub fn update(btn: buttons.State) void` | advance one frame of state |
+| `pub fn render() void` | clear `draw.buf` and paint the whole frame |
+
+So copy `src/anims/trails.zig`, change the body, and point the `animation` import
+at the top of `src/main.zig` at the new file. That is the only switch: an
+animation never touches SPI, pins or the panel, it only calls `draw.*`.
 
 ## Build
 
     make            # build/main.hex, then the host tests
-    make test       # draw: buffer, line, stroke, disc, ring; main: physics
+    make test       # every module with a `test` block, in one run
     make upload     # flash it (PORT=/dev/ttyUSB0 by default)
     make clean
 
-Tests sit next to the code they cover, in `test` blocks in `draw.zig` and
-`main.zig`. `zig test src/main.zig` also runs the tests of the files it
-imports, so the second command re-runs draw's six tests alongside main's two.
+Tests sit next to the code they cover, in `test` blocks. `make test` greps the
+sources for those blocks, writes a throwaway root in `src/` that imports each
+one, and runs `zig test` on it, so a new module is picked up without editing the
+Makefile. It prints one line per module plus the total, and the full per-test
+output when something fails. The root has to be in `src/` because Zig keeps
+imports inside the test root's directory: `zig test src/anims/trails.zig` alone
+cannot reach `../draw.zig`.
 
 Zig produces the object (its own AVR link step places `.text` at 0x11000, so
 avr-gcc does the link, adding crt0 and the vector table). Output is
@@ -75,4 +97,5 @@ with `make PORT=/dev/ttyUSB1 upload`, or `make AVRDUDE_FLAGS=...`.
 Zig 0.17 needs three things to build for this chip: compiler_rt does not
 compile for AVR (`-fno-compiler-rt`), Zig's own AVR link puts `.text` at
 0x11000 (link with avr-gcc instead), and integer initializers on globals do not
-always survive into `.data`, so `main` sets the start state explicitly.
+always survive into `.data`, so each animation's `init` sets the start state
+explicitly.

@@ -10,6 +10,10 @@
 
 const buttons = @import("../buttons.zig");
 const draw = @import("../draw.zig");
+const trig = @import("../trig.zig");
+
+const sin = trig.sin;
+const cos = trig.cos;
 
 pub const FRAME_MS: u16 = 30;
 
@@ -31,18 +35,6 @@ const Point = [2]i16;
 
 // The four sin/cos values shared by every vertex and face this frame.
 const Basis = struct { cy: i16, sy: i16, cx: i16, sx: i16 };
-
-// 8.8 sine over a 256-step turn: a parabola, about 5% off true sine.
-fn sin(a: u8) i16 {
-    const half: u16 = a & 127;
-    const v: i16 = @intCast((half * (128 - half)) >> 4);
-
-    return if (a < 128) v else -v;
-}
-
-fn cos(a: u8) i16 {
-    return sin(a +% 64);
-}
 
 fn basis(y: u8, p: u8) Basis {
     return .{ .cy = cos(y), .sy = sin(y), .cx = cos(p), .sx = sin(p) };
@@ -237,19 +229,6 @@ pub fn render() void {
             outlineFace(axis, s, &pts);
         }
     }
-}
-
-test "sin is a sine wave to within a few percent" {
-    const std = @import("std");
-
-    try std.testing.expectEqual(@as(i16, 0), sin(0));
-    try std.testing.expectEqual(@as(i16, 256), cos(0));
-    try std.testing.expectEqual(@as(i16, 256), sin(64));
-    try std.testing.expectEqual(@as(i16, -256), sin(192));
-
-    // The only value allowed near a zero crossing is "small".
-    try std.testing.expect(@abs(sin(127)) < 10);
-    try std.testing.expect(@abs(sin(255)) < 10);
 }
 
 test "dither hits every level once in each 4x4 cell" {

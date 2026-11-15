@@ -1,12 +1,7 @@
-# Build and flash the Zig MicroView demo.
-# Zig compiles the object; avr-gcc supplies crt0, the vector table and the
-# linker script (Zig's own AVR link step puts .text at 0x11000).
+# Build and flash the Zig MicroView demo. Zig compiles and links it all;
+# avr.ld says where flash and RAM are, src/start.zig is the reset vector.
 
 MCU := atmega328p
-F_CPU := 16000000
-
-AVR_BIN ?= $(firstword $(wildcard $(HOME)/.arduino15/packages/arduino/tools/avr-gcc/*/bin))
-AVR_PREFIX := $(if $(AVR_BIN),$(AVR_BIN)/)
 
 PORT ?= /dev/ttyUSB0
 AVRDUDE_FLAGS ?= -c arduino -p $(MCU) -P $(PORT) -b 115200
@@ -21,16 +16,14 @@ ZIG ?= zig
 
 all: $(OUT)/main.hex test
 
-$(OUT)/main.o: $(SRC) | $(OUT)
-	$(ZIG) build-obj -target avr-freestanding -mcpu=$(MCU) -O ReleaseSmall \
-		-fno-compiler-rt -femit-bin=$@ src/main.zig
-
-$(OUT)/main.elf: $(OUT)/main.o
-	$(AVR_PREFIX)avr-gcc -mmcu=$(MCU) -DF_CPU=$(F_CPU)UL -Os -o $@ $<
+$(OUT)/main.elf: $(SRC) avr.ld | $(OUT)
+	$(ZIG) build-exe -target avr-freestanding -mcpu=$(MCU) -O ReleaseSmall \
+		-fno-compiler-rt -fentry=_start -T avr.ld -femit-bin=$@ src/main.zig
 
 $(OUT)/main.hex: $(OUT)/main.elf
-	$(AVR_PREFIX)avr-objcopy -O ihex -R .eeprom $< $@
-	$(AVR_PREFIX)avr-size $<
+	$(ZIG) objcopy -O hex $< $@
+	$(ZIG) objcopy -O binary $< $(OUT)/main.bin
+	@printf 'flash: %s bytes\n' "$$(wc -c < $(OUT)/main.bin)"
 
 $(OUT):
 	mkdir -p $@

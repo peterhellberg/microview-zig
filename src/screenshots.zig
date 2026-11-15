@@ -32,6 +32,7 @@ const shots = [_]Shot{
     .{ .name = "trails", .anim = @import("anims/trails.zig"), .frames = 70 },
     .{ .name = "spokes", .anim = @import("anims/spokes.zig"), .frames = 30 },
     .{ .name = "cube", .anim = @import("anims/cube.zig"), .frames = 240 },
+    .{ .name = "radar", .anim = @import("anims/radar.zig"), .frames = 150 },
 };
 
 fn pixelOn(buf: *const [draw.WIDTH * draw.PAGES]u8, x: usize, y: usize) bool {

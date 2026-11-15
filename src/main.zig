@@ -13,7 +13,7 @@
 
 const buttons = @import("buttons.zig");
 const microview = @import("microview.zig");
-const animation = @import("anims/trails.zig");
+const animation = @import("anims/spokes.zig");
 
 export fn main() callconv(.c) noreturn {
     buttons.init();

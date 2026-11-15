@@ -12,7 +12,7 @@ PORT ?= /dev/ttyUSB0
 AVRDUDE_FLAGS ?= -c arduino -p $(MCU) -P $(PORT) -b 115200
 
 OUT := build
-SRC := $(wildcard src/*.zig)
+SRC := $(wildcard src/*.zig src/*/*.zig)
 
 ZIG ?= zig
 
@@ -35,9 +35,29 @@ $(OUT)/main.hex: $(OUT)/main.elf
 $(OUT):
 	mkdir -p $@
 
+# Zig resolves imports only inside the test root's directory, so a file under
+# src/anims/ cannot import ../draw.zig when it is itself the root. One generated
+# root in src/ that imports every module with tests covers them all.
+TEST_FILES := $(shell grep -lE '^test[ {]' $(SRC) 2>/dev/null)
+
 test: $(SRC)
-	$(ZIG) test src/draw.zig
-	$(ZIG) test src/main.zig
+	@root=src/.tests.tmp.zig; log=$(OUT)/test.log; \
+	trap 'rm -f $$root' EXIT; \
+	mkdir -p $(OUT); \
+	{ echo 'comptime {'; \
+	  for f in $(patsubst src/%,%,$(TEST_FILES)); do \
+	    echo "    _ = @import(\"$$f\");"; \
+	  done; \
+	  echo '}'; } > $$root; \
+	if $(ZIG) test $$root > $$log 2>&1; then \
+	  sed -n 's|^[0-9]*/[0-9]* \(.*\)\.test\..*OK$$|\1|p' $$log | \
+	    sed 's|\.|/|g' | sort | uniq -c | \
+	    awk '{ printf "  %-18s %d test%s\n", $$2 ".zig", $$1, ($$1 == 1 ? "" : "s") }'; \
+	  tail -n 1 $$log; \
+	else \
+	  cat $$log; \
+	  exit 1; \
+	fi
 
 upload: $(OUT)/main.hex
 	avrdude $(AVRDUDE_FLAGS) -U flash:w:$<:i -D
